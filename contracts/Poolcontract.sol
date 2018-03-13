@@ -80,6 +80,8 @@ contract Pool {
     require(saleContractSet);    
     // check to see if the address isn't a burn address and have been set
     require(saleContract != 0x0);
+    // check if the eth has been sent already
+    require(!ethSent);
     //calculate the contract fee which is 1.5%
     fee = totalEth * 150;
     // flip the ethSent flag
