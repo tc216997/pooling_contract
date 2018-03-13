@@ -91,7 +91,12 @@ contract Pool {
   function payTheDev() external onlyOwner {
     // check to see if the funds has been sent
     require(ethSent);
-    saleContract.transfer(fee);
+    // check to see if the fee has been paid out
+    require(fee > 0);
+    uint feeToWithdraw = fee;
+    // set fee to 0 to prevent continuous call
+    fee = 0;
+    saleContract.transfer(feeToWithdraw);
   }
 
   // public function for refunding people
