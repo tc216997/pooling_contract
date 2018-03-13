@@ -2,6 +2,15 @@
   warning: This is NOT a trustless contract. This contract also haven't been unit tested yet!
            I did this contract as a hobby! The creator of this contract is not responsible for any 
            loss of fund or vulnerability found in the contract. 
+           Use at your own risk!
+           "THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+            IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+            FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+            IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE BE
+            LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR
+            ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER
+            IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+            OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE."
   @author tc216997
   @description: A contract for pooling eth and distributing tokens that was received.
                 only the owner address can set the saleAddress and tokenAddress.
