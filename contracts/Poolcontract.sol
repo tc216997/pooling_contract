@@ -28,13 +28,27 @@ contract ERC20 {
 
 // pool contract and logic
 contract Pool {  
+
+  // modifier to make sure only certain functions can be called by owner only
+  modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+  }
+  // modifier to make sure only withdrawTokens and refunds can be called by pool participants
+  modifier onlyParticipants() {
+    require(balances[msg.sender] > 0);
+    _;
+  }  
+  
   // key:value pair of address to eth balances
   mapping (address => uint) balances;
   // wallet address that can calls special owner function
   // this is the test wallet address from truffle ganache using the default mnemonic
   address owner = 0x627306090abaB3A6e1400e9345bC60c78a8BEf57;
   // saleContract and tokenContract are set by the owner
-  address saleContract;
+  address saleAddress;
+  // sha3 password hash for emergency owner address switch
+  bytes32 passwordHash = 0x8f71f771c1232f8b7b19d39c285cf98f68ef10e6ced16dd61d91de5bc725be19;
   // tokencontract address to be set by the owner
   ERC20 tokenContract;
   // fee of the contract to be paid to the contract owner
@@ -43,27 +57,26 @@ contract Pool {
   uint totalEth;
   // flags for eth sent out, sale address being set, and token address being set
   bool ethSent = false;
-  bool saleContractSet = false;
+  bool saleAddressSet = false;
   bool tokenSet = false;
 
-  // modifier to make sure only certain functions can be called by owner only
-  modifier onlyOwner() {
-    require(msg.sender == owner);
-    _;
-  }
-
   // owner function to set the sale address to send the eth to, only can be called by owner
-  function setSaleAddress(address to) external onlyOwner {
+  function setSaleAddress(address to, string password) public onlyOwner {
+    // a password failsafe in case of owner's private key gets phished
+    require(keccak256(password) == passwordHash);
     // double check to make sure the owner didn't set the address to burn
     require(to != 0x0);
     // check to see if the contract have been set already
-    require(!saleContractSet);
+    require(!saleAddressSet);
     // flip the flag
-    saleContractSet = true;    
+    saleAddressSet = true;    
     // set the saleContract
-    saleContract = to;
+    saleAddress = to;
   }
-  function setTokenAddress(address token) external onlyOwner {
+  // owner function to set the token contract address
+  function setTokenAddress(address token, string password) public onlyOwner {
+    // failsafe in case of owner's wallet getting phished
+    require(keccak256(password) == passwordHash);
     // double check to make sure the owner didn't set the address to burn
     require(token != 0x0);
     // can only set the tokenAddress once
@@ -74,53 +87,57 @@ contract Pool {
     tokenContract = ERC20(token);
   }
 
-  // owner specific function to send the eth to the address
-  function sendEth() external onlyOwner {
-    // check to see if the address have been set
-    require(saleContractSet);    
-    // check to see if the address isn't a burn address and have been set
-    require(saleContract != 0x0);
-    // check if the eth has been sent already
+  // Buy the tokens. Sends ETH to the presale wallet and records the ETH amount held in the contract.
+  function sendIt(string password) public onlyOwner {
+    // failsafe in case of owner's wallet getting phished
+    require(keccak256(password) == passwordHash);    
+    // check to see if the eth have been sent before
     require(!ethSent);
-    //calculate the contract fee which is 1.5%
-    fee = totalEth * 150;
-    // flip the ethSent flag
+    // check to see if the address has been set
+    require(saleAddressSet);
+    //Record that the contract has bought the tokens.
     ethSent = true;
-    // send the eth minus the contract fee
-    saleContract.transfer(totalEth - fee);
+    // calculate the fee
+    fee = (this.balance * 1) / 100;
+    // subtract the fee from the contract balance and record it
+    totalEth = this.balance - fee;
+    // Transfer the eth minus the fee to the set address
+    saleAddress.transfer(totalEth);
   }
+
   // owner function to withdraw the fee
-  function payTheDev() external onlyOwner {
+  function payTheDev(string password) public onlyOwner {
+    // failsafe in case of owner's wallet getting phished
+    require(keccak256(password) == passwordHash);    
     // check to see if the funds has been sent
     require(ethSent);
     // check to see if the fee has been paid out
     require(fee > 0);
+    // temp variable to store the fee
     uint feeToWithdraw = fee;
-    // set fee to 0 to prevent continuous call
+    // set fee to 0 in case of future calls
     fee = 0;
-    saleContract.transfer(feeToWithdraw);
+    // send the fee to the owner
+    owner.transfer(feeToWithdraw);
   }
 
-  // public function for refunding people
-  function refund() external {
+  // pool participants function for refunding people
+  function refund() public onlyParticipants {
     // check if the funds hasn't been sent yet
     require(!ethSent);
-    // check if msg.sender actually sent eth before
-    require(balances[msg.sender] > 0);
     // store the refund amount to a temp variable
     uint refundAmount = balances[msg.sender];
     // set the balance of msg.sender to 0 to prevent a recursive call
     balances[msg.sender] = 0;
+    // send the eth to the function caller
     msg.sender.transfer(refundAmount);
   }
 
-  // public function for withdrawing tokens
-  function withdrawTokens() external {
+  // pool participants function for withdrawing tokens
+  function withdrawTokens() public onlyParticipants {
     uint contractTokenBalance = tokenContract.balanceOf(address(this));
     // check if the funds have been sent
     require(ethSent);
-    // check if the function caller actually has tokens
-    require(balances[msg.sender] > 0);
     // check if there is tokens in the contract
     require(contractTokenBalance > 0);
     // check if the token address have been set
@@ -139,7 +156,5 @@ contract Pool {
     require(!ethSent);
     // update the balance value whenever someone 
     balances[msg.sender] += msg.value;
-    // update the contract total eth value
-    totalEth += msg.value;
   }
 }

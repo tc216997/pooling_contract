@@ -1,3 +1,7 @@
 build/
 contracts/Migrations.sol
-
+package.json
+node_modules/
+sha3.txt
+sha3generator.js
+package-lock.json
