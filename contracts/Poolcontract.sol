@@ -59,8 +59,9 @@ contract Pool {
   bool tokenSet = false;
   bool emergency = false;
 
-  // a one-time emergency function to change to a new owner for emergency purposes
-  function changeOwnerAddress(address newOwner, string password) external {
+  // a one-time emergency function for a compromised wallet
+  // to change to a new owner
+  function changeOwnerAddress(address newOwner, string password) public onlyOwner {
     // check if password matches
     require(keccak256(password) == passwordHash);
     // check if this function has been triggered before
