@@ -3,20 +3,14 @@
            I did this contract as a hobby! The creator of this contract is not responsible for any 
            loss of fund or vulnerability found in the contract. 
            Use at your own risk!
-           "THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-            IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-            FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-            IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE BE
-            LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES, OR
-            ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER
-            IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
-            OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE."
   @author tc216997
-  @description: A contract for pooling eth and distributing tokens that was received.
-                only the owner address can set the saleAddress and tokenAddress.
+  @description: A modified contract from the original u/cintix monetha pooling contract 
+                for pooling eth and distributing tokens that was received.
+                only the owner address with password can set the saleAddress and tokenAddress.
+                only the owner can send out the eth and calling the payout function
                 The fees only pays out if the funds have been sent out.
-                Public can call refund if the funds haven't been sent out.
-                Public call withdraw tokens if the tokens have been deposited.
+                only pool participants can call refund if the funds haven't been sent out.
+                only pool participants call withdraw tokens if the tokens have been deposited.
 */
 pragma solidity ^0.4.17;
 
@@ -43,11 +37,15 @@ contract Pool {
   // key:value pair of address to eth balances
   mapping (address => uint) balances;
   // wallet address that can calls special owner function
-  // this is the test wallet address from truffle ganache using the default mnemonic
+  // this is the first test wallet address from truffle ganache using the default mnemonic
+  // please use the correct address if you are going to use this contract
   address owner = 0x627306090abaB3A6e1400e9345bC60c78a8BEf57;
   // saleContract and tokenContract are set by the owner
   address saleAddress;
   // sha3 password hash for emergency owner address switch
+  // the password for this contract example is "password1234"
+  // please get a new hash if you are planning use this contract and make sure the keccak256 is compatible
+  // with solidity
   bytes32 passwordHash = 0x8f71f771c1232f8b7b19d39c285cf98f68ef10e6ced16dd61d91de5bc725be19;
   // tokencontract address to be set by the owner
   ERC20 tokenContract;
@@ -55,14 +53,27 @@ contract Pool {
   uint fee;
   // total eth value of the contract that was deposited
   uint totalEth;
-  // flags for eth sent out, sale address being set, and token address being set
+  // flags for eth sent out, sale address being set, token address being set and emergency
   bool ethSent = false;
   bool saleAddressSet = false;
   bool tokenSet = false;
+  bool emergency = false;
+
+  // a one-time emergency function to change to a new owner for emergency purposes
+  function changeOwnerAddress(address newOwner, string password) external {
+    // check if password matches
+    require(keccak256(password) == passwordHash);
+    // check if this function has been triggered before
+    require(!emergency);
+    // flip the emergency flag to true so it can't be triggered again
+    emergency = true;
+    // assign the new owner address as the contract owner
+    owner = newOwner;
+  }
 
   // owner function to set the sale address to send the eth to, only can be called by owner
   function setSaleAddress(address to, string password) public onlyOwner {
-    // a password failsafe in case of owner's private key gets phished
+    // a password failsafe in case of owner's wallet is compromised
     require(keccak256(password) == passwordHash);
     // double check to make sure the owner didn't set the address to burn
     require(to != 0x0);
@@ -75,7 +86,7 @@ contract Pool {
   }
   // owner function to set the token contract address
   function setTokenAddress(address token, string password) public onlyOwner {
-    // failsafe in case of owner's wallet getting phished
+    // failsafe in case of owner's wallet is compromised
     require(keccak256(password) == passwordHash);
     // double check to make sure the owner didn't set the address to burn
     require(token != 0x0);
@@ -89,7 +100,7 @@ contract Pool {
 
   // Buy the tokens. Sends ETH to the presale wallet and records the ETH amount held in the contract.
   function sendIt(string password) public onlyOwner {
-    // failsafe in case of owner's wallet getting phished
+    // failsafe in case of owner's wallet is compromised
     require(keccak256(password) == passwordHash);    
     // check to see if the eth have been sent before
     require(!ethSent);
@@ -106,8 +117,8 @@ contract Pool {
   }
 
   // owner function to withdraw the fee
-  function payTheDev(string password) public onlyOwner {
-    // failsafe in case of owner's wallet getting phished
+  function withdrawFee(string password) public onlyOwner {
+    // failsafe in case of owner's wallet is compromised
     require(keccak256(password) == passwordHash);    
     // check to see if the funds has been sent
     require(ethSent);
