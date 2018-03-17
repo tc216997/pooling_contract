@@ -14,20 +14,14 @@
 */
 pragma solidity ^0.4.17;
 
-// erc20 token contract and overriding 2 function from it
-contract ERC20 {
-  function balanceOf(address _tokenOwner) public constant returns (uint balance);
-  function transfer(address _to, uint _amt) public returns (bool success);
-}
+import "./erc20.sol";
+import "./ownable.sol";
+import "./safemath.sol";
 
 // pool contract and logic
-contract Pool {  
+contract Pool is ERC20, Ownable {  
+  using SafeMath for uint;
 
-  // modifier to make sure only certain functions can be called by owner only
-  modifier onlyOwner() {
-    require(msg.sender == owner);
-    _;
-  }
   // modifier to make sure only withdrawTokens and refunds can be called by pool participants
   modifier onlyParticipants() {
     require(balances[msg.sender] > 0);
@@ -36,10 +30,6 @@ contract Pool {
   
   // key:value pair of address to eth balances
   mapping (address => uint) balances;
-  // wallet address that can calls special owner function
-  // this is the first test wallet address from truffle ganache using the default mnemonic
-  // please use the correct address if you are going to use this contract
-  address owner = 0x627306090abaB3A6e1400e9345bC60c78a8BEf57;
   // saleContract and tokenContract are set by the owner
   address saleAddress;
   // sha3 password hash for emergency owner address switch
@@ -110,9 +100,10 @@ contract Pool {
     //Record that the contract has bought the tokens.
     ethSent = true;
     // calculate the fee
-    fee = (this.balance * 1) / 100;
+    // fee is calculated by balance of contract * numerator / denominator
+    fee = fee.mul(this.balance.mul(150)).div(10000);
     // subtract the fee from the contract balance and record it
-    totalEth = this.balance - fee;
+    totalEth = this.balance.sub(fee);
     // Transfer the eth minus the fee to the set address
     saleAddress.transfer(totalEth);
   }
@@ -127,7 +118,7 @@ contract Pool {
     require(fee > 0);
     // temp variable to store the fee
     uint feeToWithdraw = fee;
-    // set fee to 0 in case of future calls
+    // set fee to 0 to prevent additional calls
     fee = 0;
     // send the fee to the owner
     owner.transfer(feeToWithdraw);
@@ -139,7 +130,7 @@ contract Pool {
     require(!ethSent);
     // store the refund amount to a temp variable
     uint refundAmount = balances[msg.sender];
-    // set the balance of msg.sender to 0 to prevent a recursive call
+    // set the balance of msg.sender to 0 to prevent additional calls
     balances[msg.sender] = 0;
     // send the eth to the function caller
     msg.sender.transfer(refundAmount);
@@ -155,8 +146,9 @@ contract Pool {
     // check if the token address have been set
     require(tokenSet);
     // calculate the amount of tokens that user can withdraw and set it to temp variable
-    uint tokensToWithdraw = contractTokenBalance / (totalEth - fee) * balances[msg.sender];
-    // set the function caller eth balance to 0 before sending to prevent recursive call
+    // tokens to withdraw is calculated by contractTokenBalance / (totalEth - fee) * balances[msg.sender]
+    uint tokensToWithdraw = contractTokenBalance.div(totalEth.sub(fee)).mul(balances[msg.sender]);
+    // set the function caller eth balance to 0 before sending to prevent additional calls
     balances[msg.sender] = 0;
     // transfer the token to the function caller
     tokenContract.transfer(msg.sender, tokensToWithdraw);
@@ -167,6 +159,6 @@ contract Pool {
     // check if the funds hasn't been sent yet
     require(!ethSent);
     // update the balance value whenever someone 
-    balances[msg.sender] += msg.value;
+    balances[msg.sender].add(msg.value);
   }
 }
