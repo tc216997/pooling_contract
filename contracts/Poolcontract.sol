@@ -32,11 +32,6 @@ contract Pool is ERC20, Ownable {
   mapping (address => uint) balances;
   // saleContract and tokenContract are set by the owner
   address saleAddress;
-  // sha3 password hash for emergency owner address switch
-  // the password for this contract example is "password1234"
-  // please get a new hash if you are planning use this contract and make sure the keccak256 is compatible
-  // with solidity
-  bytes32 passwordHash = 0x8f71f771c1232f8b7b19d39c285cf98f68ef10e6ced16dd61d91de5bc725be19;
   // tokencontract address to be set by the owner
   ERC20 tokenContract;
   // fee of the contract to be paid to the contract owner
@@ -51,9 +46,7 @@ contract Pool is ERC20, Ownable {
 
   // a one-time emergency function for a compromised wallet
   // to change to a new owner
-  function changeOwnerAddress(address newOwner, string password) public onlyOwner {
-    // check if password matches
-    require(keccak256(password) == passwordHash);
+  function changeOwnerAddress(address newOwner) public onlyOwner {
     // check if this function has been triggered before
     require(!emergency);
     // flip the emergency flag to true so it can't be triggered again
@@ -63,9 +56,7 @@ contract Pool is ERC20, Ownable {
   }
 
   // owner function to set the sale address to send the eth to, only can be called by owner
-  function setSaleAddress(address to, string password) public onlyOwner {
-    // a password failsafe in case of owner's wallet is compromised
-    require(keccak256(password) == passwordHash);
+  function setSaleAddress(address to) public onlyOwner {
     // double check to make sure the owner didn't set the address to burn
     require(to != 0x0);
     // check to see if the contract have been set already
@@ -76,9 +67,7 @@ contract Pool is ERC20, Ownable {
     saleAddress = to;
   }
   // owner function to set the token contract address
-  function setTokenAddress(address token, string password) public onlyOwner {
-    // failsafe in case of owner's wallet is compromised
-    require(keccak256(password) == passwordHash);
+  function setTokenAddress(address token) public onlyOwner {
     // double check to make sure the owner didn't set the address to burn
     require(token != 0x0);
     // can only set the tokenAddress once
@@ -90,9 +79,7 @@ contract Pool is ERC20, Ownable {
   }
 
   // Buy the tokens. Sends ETH to the presale wallet and records the ETH amount held in the contract.
-  function sendIt(string password) public onlyOwner {
-    // failsafe in case of owner's wallet is compromised
-    require(keccak256(password) == passwordHash);    
+  function sendIt() public onlyOwner {    
     // check to see if the eth have been sent before
     require(!ethSent);
     // check to see if the address has been set
@@ -109,9 +96,7 @@ contract Pool is ERC20, Ownable {
   }
 
   // owner function to withdraw the fee
-  function withdrawFee(string password) public onlyOwner {
-    // failsafe in case of owner's wallet is compromised
-    require(keccak256(password) == passwordHash);    
+  function withdrawFee() public onlyOwner { 
     // check to see if the funds has been sent
     require(ethSent);
     // check to see if the fee has been paid out
